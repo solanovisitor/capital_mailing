@@ -1,9 +1,0 @@
-yfinance
-pandas
-numpy
-scikit-learn
-boto3
-newsapi-python
-vaderSentiment
-textblob
-pandas-datareader
