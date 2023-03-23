@@ -6,11 +6,14 @@ import boto3
 import pickle
 import numpy as np
 from datetime import datetime, timedelta
+from config import NEWS_API_KEY, QUANDL_API_KEY
 
 s3 = boto3.client('s3')
 
 def train_models():
     assets = utils.get_asset_list()
+
+    print("Asset list pulled.")
 
     # Define the start and end dates for fetching historical data
     end_date = datetime.today() - timedelta(days=1)
@@ -21,13 +24,15 @@ def train_models():
         historical_data = utils.get_historical_data(asset, start_date, end_date)
         
         # Fetch sentiment data
-        sentiment_data = utils.get_sentiment_data(utils.NEWS_API_KEY)
+        sentiment_data = utils.get_sentiment_data(NEWS_API_KEY)
+
+        print(sentiment_data)
         
         # Fetch fundamental data
-        fundamental_data = utils.get_fundamental_data(utils.QUANDL_API_KEY)
+        # fundamental_data = utils.get_fundamental_data(QUANDL_API_KEY)
 
         # Preprocess the data
-        X, y_classification, y_regression = preprocess_data(historical_data, sentiment_data, fundamental_data)
+        X, y_classification, y_regression = preprocess_data(asset, historical_data, sentiment_data)
 
         # Split the data into training and testing sets
         X_train, X_test, y_class_train, y_class_test = train_test_split(X, y_classification, test_size=0.2, random_state=42)
@@ -68,17 +73,16 @@ def train_models():
         s3.upload_file(regression_model_name, utils.S3_BUCKET_NAME, regression_model_name)
 
 
-def preprocess_data(historical_data, sentiment_data, fundamental_data):
+def preprocess_data(asset, historical_data, sentiment_data):
     # Define the prediction horizon
     horizon = 20
 
     # Combine historical_data, sentiment_data, and fundamental_data
     combined_data = historical_data.copy()
-    ticker = historical_data.index[0][0]
-    combined_data['Sentiment'] = sentiment_data[ticker]
-    combined_data['PE'] = fundamental_data[ticker]['PE']
-    combined_data['RevenueGrowth'] = fundamental_data[ticker]['RevenueGrowth']
-
+    combined_data['Sentiment'] = sentiment_data[asset]
+    # combined_data['PE'] = fundamental_data[ticker]['PE']
+    # combined_data['RevenueGrowth'] = fundamental_data[ticker]['RevenueGrowth']
+    print(combined_data)
     # Calculate the return for the next 'horizon' days
     combined_data['FutureReturn'] = combined_data['Close'].shift(-horizon) / combined_data['Close'] - 1
 
@@ -102,9 +106,9 @@ def preprocess_data(historical_data, sentiment_data, fundamental_data):
 
     # Drop rows with NaN values
     combined_data.dropna(inplace=True)
-
+    print(combined_data)
     # Prepare the dataset for classification and regression tasks
-    X = combined_data[['SMA_10', 'SMA_30', 'RSI', 'MACD', 'Sentiment', 'PE', 'RevenueGrowth']].values
+    X = combined_data[['SMA_10', 'SMA_30', 'RSI', 'MACD', 'Sentiment']].values
 
     # Classification: Buy (1) or Sell (0)
     y_classification = np.where(combined_data['FutureReturn'] > 0, 1, 0)

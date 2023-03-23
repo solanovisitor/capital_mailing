@@ -1,5 +1,3 @@
-# predict_and_send.py
-
 import boto3
 import pickle
 import pandas as pd

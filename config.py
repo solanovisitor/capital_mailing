@@ -1,7 +1,7 @@
 # config.py
 
 # API keys
-NEWS_API_KEY = 'your_news_api_key'
+NEWS_API_KEY = 'e2338422ce634cff9ee1a4a9ec5cc197'
 QUANDL_API_KEY = 'your_quandl_api_key'
 
 # Database credentials
