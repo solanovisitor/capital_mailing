@@ -1,53 +1,79 @@
 # predict_and_send.py
 
-import utils
 import boto3
 import pickle
 import pandas as pd
-from sklearn.metrics import classification_report
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from datetime import datetime
+from utils import get_asset_list, get_historical_data, get_sentiment_data, get_fundamental_data, send_email
 
-def generate_predictions_and_send_email():
-    assets = utils.get_asset_list()
-    s3 = boto3.client('s3')
+s3 = boto3.client('s3')
 
-    # Download the trained models
+def download_model(asset, model_type):
+    model_name = f"{asset}_{model_type}_model.pkl"
+    s3.download_file(utils.S3_BUCKET_NAME, model_name, model_name)
+
+    with open(model_name, 'rb') as f:
+        model = pickle.load(f)
+    
+    return model
+
+def generate_predictions():
+    assets = get_asset_list()
+    today = datetime.today()
+
+    predictions = []
+
     for asset in assets:
-        model_name = f"{asset}_model.pkl"
-        s3.download_file(utils.S3_BUCKET_NAME, model_name, model_name)
+        # Fetch historical data
+        historical_data = get_historical_data(asset, today - timedelta(days=5 * 365), today)
 
-        with open(model_name, 'rb') as f:
-            model = pickle.load(f)
+        # Fetch sentiment data
+        sentiment_data = get_sentiment_data(utils.NEWS_API_KEY)
 
-        # Generate predictions for the next 20 days
-        future_data = utils.get_historical_data(asset, start_date, end_date)
-        sentiment_data = utils.get_sentiment_data(utils.NEWS_API_KEY)
-        fundamental_data = utils.get_fundamental_data(utils.QUANDL_API_KEY)
+        # Fetch fundamental data
+        fundamental_data = get_fundamental_data(utils.QUANDL_API_KEY)
 
-        # Preprocess the data
-        X_future = preprocess_data(future_data, sentiment_data, fundamental_data)
+        # Preprocess the data for a single data point (today)
+        X_today = preprocess_data_today(historical_data, sentiment_data, fundamental_data)
 
-        # Make predictions
-        y_future = model.predict(X_future)
+        # Download and load the trained models for the asset
+        classification_model = download_model(asset, 'classification')
+        regression_model = download_model(asset, 'regression')
 
-        # Store predictions in a DataFrame
-        predictions = pd.DataFrame({"Ticker": asset, "Date": future_dates, "PredictedSignal": y_future})
+        # Generate predictions
+        predicted_signal = classification_model.predict(X_today)[0]
+        predicted_price = regression_model.predict(X_today)[0]
 
-        # Insert the predictions into the RDS database
-        insert_predictions_to_db(predictions)
+        predictions.append({
+            'Asset': asset,
+            'PredictedSignal': predicted_signal,
+            'PredictedPrice': predicted_price,
+            'Date': today
+        })
 
-    # Send email with a summary of the predictions
-    send_email_with_predictions(predictions)
+    return predictions
 
-def insert_predictions_to_db(predictions):
-    # Implement a function to insert the predictions into the RDS database
-    pass
+def summarize_predictions(predictions):
+    summary = "Asset Predictions:\n\n"
 
-def send_email_with_predictions(predictions):
-    # Implement a function to send an email with a summary of the predictions
-    pass
+    for prediction in predictions:
+        signal = "Buy" if prediction['PredictedSignal'] == 1 else "Sell"
+        summary += f"{prediction['Asset']}: {signal} - Predicted Price in 20 days: {prediction['PredictedPrice']:.2f}\n"
+
+    return summary
+
+def main():
+    predictions = generate_predictions()
+    summary = summarize_predictions(predictions)
+
+    print(summary)
+
+    # Send the summary via email to the customer base
+    subject = "Asset Predictions"
+    recipients = utils.get_email_recipients()
+
+    for recipient in recipients:
+        send_email(recipient, subject, summary)
 
 if __name__ == "__main__":
-    generate_predictions_and_send_email()
+    main()

@@ -1,6 +1,6 @@
 # train_models.py
 
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import utils
@@ -8,6 +8,8 @@ import boto3
 import pickle
 import numpy as np
 from datetime import datetime, timedelta
+
+s3 = boto3.client('s3')
 
 def train_models():
     assets = utils.get_asset_list()
