@@ -1,5 +1,8 @@
 # utils.py
 
+import pymysql
+import pandas as pd
+from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
 import yfinance as yf
 import pandas as pd
 from newsapi import NewsApiClient
@@ -10,7 +13,7 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 
-from config import YFINANCE_API_KEY, S3_BUCKET_NAME
+from config import YFINANCE_API_KEY, S3_BUCKET_NAME, RDS_HOST, RDS_DATABASE, RDS_USER, RDS_PASSWORD
 
 def get_historical_data(ticker, start_date, end_date):
     stock_data = yf.download(ticker, start=start_date, end=end_date)
@@ -99,3 +102,65 @@ def get_email_recipients():
     """
     # Example: return a hardcoded list of recipients
     return ["customer1@example.com", "customer2@example.com", "customer3@example.com"]
+
+def get_db_connection():
+    """
+    Implement a function to get the database connection.
+    """
+    connection = pymysql.connect(
+        host=RDS_HOST,
+        user=RDS_USER,
+        password=RDS_PASSWORD,
+        database=RDS_DATABASE
+    )
+    return connection
+
+def fetch_asset_data_from_db(asset):
+    """
+    Implement a function to fetch asset data from the database.
+    """
+    connection = get_db_connection()
+    query = f"SELECT * FROM asset_predictions WHERE Ticker = '{asset}' AND Date >= CURDATE()"
+    df = pd.read_sql_query(query, connection)
+    connection.close()
+    return df
+
+def update_asset_data_in_db(asset, actual_price, actual_return, actual_signal, mae, mse, classification_label):
+    """
+    Implement a function to update asset data in the database.
+    """
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    query = f"""
+        UPDATE asset_predictions
+        SET ActualPrice = {actual_price}, ActualReturn = {actual_return}, ActualSignal = {actual_signal},
+            Mae = {mae}, Mse = {mse}, ClassificationLabel = {classification_label}
+        WHERE Ticker = '{asset}' AND Date >= CURDATE()
+    """
+
+    cursor.execute(query)
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+def calculate_classification_metrics(asset_data):
+    """
+    Implement a function to calculate classification metrics (precision, recall, accuracy, etc.).
+    """
+    y_true = asset_data['ActualSignal']
+    y_pred = asset_data['PredictedSignal']
+
+    precision = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
+    accuracy = accuracy_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred)
+
+    metrics = pd.DataFrame({
+        'Precision': [precision],
+        'Recall': [recall],
+        'Accuracy': [accuracy],
+        'F1': [f1]
+    })
+
+    return metrics
