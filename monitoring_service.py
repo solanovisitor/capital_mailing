@@ -1,8 +1,7 @@
-# monitoring_service.py
-
 import pandas as pd
 from datetime import datetime, timedelta
-from utils import get_asset_list, get_db_connection, fetch_asset_data_from_db, update_asset_data_in_db, calculate_classification_metrics
+from utils import (get_asset_list, get_historical_data, get_db_connection, fetch_asset_data_from_db, 
+                   update_asset_data_in_db, calculate_classification_metrics)
 
 def update_actual_values():
     assets = get_asset_list()
@@ -15,7 +14,7 @@ def update_actual_values():
         # Check if the actual values need to be updated
         if asset_data['Date'].date() == today.date():
             # Fetch the actual price and return
-            historical_data = utils.get_historical_data(asset, today - timedelta(days=1), today)
+            historical_data = get_historical_data(asset, today - timedelta(days=1), today)
             actual_price = historical_data.iloc[-1]['Close']
             actual_return = (actual_price / historical_data.iloc[-2]['Close']) - 1
 

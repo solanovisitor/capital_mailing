@@ -5,7 +5,8 @@ import pickle
 import pandas as pd
 from datetime import datetime, timedelta
 from utils import (get_asset_list, get_historical_data, get_sentiment_data, get_fundamental_data, 
-                    preprocess_data_today, send_email, get_email_recipients)
+                   preprocess_data_today, send_email, get_email_recipients)
+
 from config import S3_BUCKET_NAME, NEWS_API_KEY, QUANDL_API_KEY
 
 s3 = boto3.client('s3')

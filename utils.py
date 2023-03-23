@@ -1,5 +1,3 @@
-# utils.py
-
 import pymysql
 import pandas as pd
 from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score
@@ -13,7 +11,7 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 
-from config import YFINANCE_API_KEY, S3_BUCKET_NAME, RDS_HOST, RDS_DATABASE, RDS_USER, RDS_PASSWORD
+from config import S3_BUCKET_NAME, RDS_HOST, RDS_DATABASE, RDS_USER, RDS_PASSWORD
 
 def get_historical_data(ticker, start_date, end_date):
     stock_data = yf.download(ticker, start=start_date, end=end_date)

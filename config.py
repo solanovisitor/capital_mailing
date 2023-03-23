@@ -1,7 +1,6 @@
 # config.py
 
 # API keys
-YFINANCE_API_KEY = 'your_yfinance_api_key'
 NEWS_API_KEY = 'your_news_api_key'
 QUANDL_API_KEY = 'your_quandl_api_key'
 
