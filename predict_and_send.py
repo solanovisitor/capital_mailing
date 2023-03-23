@@ -3,14 +3,16 @@
 import boto3
 import pickle
 import pandas as pd
-from datetime import datetime
-from utils import get_asset_list, get_historical_data, get_sentiment_data, get_fundamental_data, send_email
+from datetime import datetime, timedelta
+from utils import (get_asset_list, get_historical_data, get_sentiment_data, get_fundamental_data, 
+                    preprocess_data_today, send_email, get_email_recipients)
+from config import S3_BUCKET_NAME, NEWS_API_KEY, QUANDL_API_KEY
 
 s3 = boto3.client('s3')
 
 def download_model(asset, model_type):
     model_name = f"{asset}_{model_type}_model.pkl"
-    s3.download_file(utils.S3_BUCKET_NAME, model_name, model_name)
+    s3.download_file(S3_BUCKET_NAME, model_name, model_name)
 
     with open(model_name, 'rb') as f:
         model = pickle.load(f)
@@ -28,10 +30,10 @@ def generate_predictions():
         historical_data = get_historical_data(asset, today - timedelta(days=5 * 365), today)
 
         # Fetch sentiment data
-        sentiment_data = get_sentiment_data(utils.NEWS_API_KEY)
+        sentiment_data = get_sentiment_data(NEWS_API_KEY)
 
         # Fetch fundamental data
-        fundamental_data = get_fundamental_data(utils.QUANDL_API_KEY)
+        fundamental_data = get_fundamental_data(QUANDL_API_KEY)
 
         # Preprocess the data for a single data point (today)
         X_today = preprocess_data_today(historical_data, sentiment_data, fundamental_data)
@@ -70,7 +72,7 @@ def main():
 
     # Send the summary via email to the customer base
     subject = "Asset Predictions"
-    recipients = utils.get_email_recipients()
+    recipients = get_email_recipients()
 
     for recipient in recipients:
         send_email(recipient, subject, summary)
